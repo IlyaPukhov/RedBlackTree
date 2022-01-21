@@ -1,158 +1,117 @@
-class RedBlackTree<T : Comparable<T>> {
+import RedBlackColor.*
+
+class RedBlackTree<T: Comparable<T>> {
     private var root: RedBlackNode<T>? = null
 
     override fun toString(): String = root?.toString() ?: "empty tree"
 
-    private fun isRed(node: RedBlackNode<T>?): Boolean {
-        return node?.color == RedBlackColor.RED
-    }
-    private fun setRed(node: RedBlackNode<T>?) {
-        if (node != null) node.color = RedBlackColor.RED
-    }
-    private fun setBlack(node: RedBlackNode<T>?) {
-        if (node != null) node.color = RedBlackColor.BLACK
+    private fun rotateRight(node: RedBlackNode<T>) {
+        if (node == root) {
+            root = node.rotateRight()
+        } else {
+            node.rotateRight()
+        }
     }
 
+    private fun rotateLeft(node: RedBlackNode<T>) {
+        if (node == root) {
+            root = node.rotateLeft()
+        } else {
+            node.rotateLeft()
+        }
+    }
 
     fun insert(value: T) {
-        insert(RedBlackNode(value))
-    }
-
-    private fun insert(node: RedBlackNode<T>): RedBlackNode<T> {
-        var parent: RedBlackNode<T>? = null
-        var x = root
-
-        while (x != null) {
-            parent = x
-            x = if (node.value!! < x.value!!) x.left else x.right
+        if (root == null) {
+            root = RedBlackNode(value, BLACK)
+        } else {
+            insert(root!!, value)
         }
-        node.parent = parent
-        if (parent == null) {
-            root = node
-        } else if (node.value!! < parent.value!!) {
-            parent.left = node
-        } else parent.right = node
-
-        insertFixup(node)
-        return node
     }
 
-    private fun insertFixup(nodeToFix: RedBlackNode<T>?) {
-        var node: RedBlackNode<T>? = nodeToFix
-        var parent: RedBlackNode<T>? = node?.parent
-        var gparent: RedBlackNode<T>? = null // Определяем родительский узел и дедушку
-        // Пока родительский узел существует, и цвет родительского узла красный
-        while (node?.parent != null && isRed(parent)) {
-            if (parent != null) gparent = parent.parent // Получаем дедушку
-
-            // Если родительский узел является левым дочерним узлом дедушкиного узла
-            if (parent == gparent?.left) {
-                val uncle: RedBlackNode<T>? = gparent?.right // Получаем узел дяди
-                // case1: узел дяди тоже красный
-                if (uncle != null && isRed(uncle)) {
-                    setBlack(parent) // Делаем черными родительский узел и узел дяди
-                    setBlack(uncle)
-                    setRed(gparent) // Закрашиваем дедушку в красный цвет
-                    node = gparent // Помещаем позицию на дедушку узла
-                    continue  // Продолжить while
-                }
-                // case2: узел-дядя черный, а текущий узел - левый дочерний узел
-                if (node == parent?.left) {
-                    setBlack(parent)
-                    setRed(gparent)
-                    rightRotate(gparent)
-                }
-                // case3: узел-дядя черный, а текущий узел - правый дочерний узел
-                if (node == parent?.right) {
-                    leftRotate(parent) // Повернуть влево от родительского узла
-                    val tmp: RedBlackNode<T> = parent // Затем меняем местами родительский узел и себя, чтобы подготовиться к следующему правому вращению
-                    parent = node
-                    node = tmp
-                }
+    private fun insert(node: RedBlackNode<T>, value: T) {
+        if (value < node.value) {
+            if (node.left == null) {
+                val newNode = RedBlackNode(value, RED)
+                newNode.parent = node
+                node.left = newNode
+                balance(newNode)
             } else {
-                val uncle: RedBlackNode<T>? = gparent?.left // Получаем узел дяди
-                // case1: узел дяди тоже красный
-                if (uncle != null && isRed(uncle)) {
-                    setBlack(parent)
-                    setBlack(uncle)
-                    setRed(gparent)
-                    node = gparent
-                    continue
-                }
-                // case4: узел-дядя черный, а текущий узел - правый дочерний узел
-                if (node == parent?.right) {
-                    setBlack(parent)
-                    setRed(gparent)
-                    leftRotate(gparent)
-                }
-                // case5: узел-дядя черный, а текущий узел - левый дочерний узел
-                if (node == parent?.left) {
-                    rightRotate(parent)
-                    val tmp: RedBlackNode<T> = parent
-                    parent = node
-                    node = tmp
-                }
+                insert(node.left!!, value)
+            }
+        } else {
+            if (node.right == null) {
+                val newNode = RedBlackNode(value, RED)
+                newNode.parent = node
+                node.right = newNode
+                balance(newNode)
+            } else {
+                insert(node.right!!, value)
             }
         }
-        // Устанавливаем корневой узел в черный цвет
-        setBlack(this.root)
     }
 
-    /**   p                       p
-    *    /                       /
-    *   x                       y
-    *  / \                     / \
-    * lx  y      ----->       x  ry
-    *    / \                 / \
-    *   ly ry               lx ly
-    **/
-    private fun leftRotate(x: RedBlackNode<T>?) {
-        // 1. Назначаем левый дочерний узел y правому дочернему узлу x и назначаем x родительскому узлу левого дочернего узла y (когда левый дочерний узел y не пуст)
-        val y: RedBlackNode<T> = x?.right!!
-        x.right = y.left
-        if (y.left != null) y.left?.parent = x
-
-        // 2. Назначаем родительский узел p элемента x (если он не пустой) родительскому узлу y и обновляем дочерний узел p до y (слева или справа)
-        y.parent = x.parent
-        if (x.parent == null) {
-            this.root = y // Если родительский узел x пуст, устанавливаем y как родительский узел
-        } else {
-            if (x == x.parent?.left) // Если x левый дочерний узел
-                x.parent?.left = y // Затем также устанавливаем y как левый дочерний узел
-            else x.parent?.right = y // в противном случае устанавливаем y как правый дочерний узел
+    private fun balance(x: RedBlackNode<T>) {
+        val p = x.parent
+        if (p == null) {
+            x.color = BLACK
+            return
         }
-
-        // 3. Устанавливаем левый дочерний узел y на x, а родительский узел x на y
-        y.left = x
-        x.parent = y
-    }
-
-    /**      p                   p
-    *       /                   /
-    *      y                   x
-    *     / \                 / \
-    *    x  ry   ----->      lx  y
-    *   / \                     / \
-    * lx  rx                   rx ry
-    **/
-    private fun rightRotate(y: RedBlackNode<T>?) {
-        // 1. Назначаем левый дочерний узел y правому дочернему узлу x и назначаем x родительскому узлу левого дочернего узла y (когда левый дочерний узел y не пуст)
-        val x: RedBlackNode<T> = y?.left!!
-        y.left = x.right
-        if (x.right != null) x.right?.parent = y
-
-        // 2. Назначаем родительский узел p элемента x (если он не пуст) родительскому узлу y и обновляем дочерний узел p до y (слева или справа)
-        x.parent = y.parent
-        if (y.parent == null) {
-            this.root = x // Если родительский узел x пуст, устанавливаем y как родительский узел
-        } else {
-            if (y === y.parent?.right) // Если x левый дочерний узел
-                y.parent?.right = x // Затем также устанавливаем y как левый дочерний узел
-            else y.parent?.left = x // в противном случае устанавливаем y как правый дочерний узел
+        if (p.color == BLACK) {
+            return
         }
-
-        // 3. Устанавливаем левый дочерний узел y на x, а родительский узел x на y
-        x.right = y
-        y.parent = x
+        val g = p.parent
+        if (g == null) {
+            balance(p)
+            return
+        }
+        val u = if (p == g.left) {
+            g.right
+        } else {
+            g.left
+        }
+        // 1 сл.
+        if (u?.color == RED) {
+            println("1 сл.")
+            g.color = RED
+            p.color = BLACK
+            u.color = BLACK
+            balance(g)
+            return
+        }
+        // 2 сл.
+        if (u == g.right && x == p.left) {
+            println("2 сл.")
+            rotateRight(g)
+            g.color = RED
+            g.parent?.color = BLACK
+            return
+        }
+        // 3 сл.
+        if (u == g.right && x == p.right) {
+            println("3 сл.")
+            rotateLeft(p)
+            rotateRight(g)
+            g.color = RED
+            g.parent?.color = BLACK
+            return
+        }
+        // 4 сл.
+        if (u == g.left && x == p.right) {
+            println("4 сл.")
+            rotateLeft(g)
+            g.color = RED
+            g.parent?.color = BLACK
+            return
+        }
+        // 5 сл.
+        if (u == g.left && x == p.left) {
+            println("5 сл.")
+            rotateRight(p)
+            rotateLeft(g)
+            g.color = RED
+            g.parent?.color = BLACK
+            return
+        }
     }
 }

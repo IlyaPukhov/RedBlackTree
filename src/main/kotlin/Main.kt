@@ -1,6 +1,6 @@
 fun main() {
     val tree = RedBlackTree<Int>()
-    val list = listOf(5, 3, 2, 3, 1, 7, 6)
+    val list = listOf(1, 2, 3, 4, 5, 6, 7, 8)
     for (x in list) {
         tree.insert(x)
     }
